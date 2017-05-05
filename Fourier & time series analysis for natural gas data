@@ -1,31 +1,90 @@
 
+install.packages("fpp",dependencies = TRUE)
+install.packages("forecast",dependencies = TRUE)
+install.packages("TSA",dependencies = TRUE)
+
+hoolie <- readXL("E:/Desktop backup/OPRE/Project/All data.xlsx", 
+                 rownames=FALSE, header=TRUE, na="", sheet="Sheet1", stringsAsFactors=TRUE)
+                 
+# caclculate periodicity
+
+library(TSA)
+ 
+# compute the Fourier Transform
+p = periodogram(hoolie$demand)
+
+dd = data.frame(freq=p$freq, spec=p$spec)
+order = dd[order(-dd$spec),]
+top2 = head(order, 2)
+ 
+# display the 2 highest "power" frequencies
+top2
+time = 1/top2$f
+time
+
+library(forecast)
+library(fpp)
+hoolie<-hoolie[1:192,]
+hoolie$period <- seq.int(nrow(hoolie))
+
+trend = ma(hoolie$Demand, order = 12, centre = T)
+plot(as.ts(hoolie$Demand))
+lines(trend)
+plot(as.ts(trend))
+#additive detrend
+detrend= hoolie$Demand - trend
+plot(as.ts(detrend))
+#multiplicative detrend
+Mdetrend= hoolie$Demand/trend
+plot(as.ts(Mdetrend))
+
+#Average seasonality
+avg = t(matrix(data = detrend, nrow = 12))
+seasonal = colMeans(avg, na.rm = T)
+plot(as.ts(rep(seasonal,12)))
+#Average seasonality multiplicative
+avgM = t(matrix(data = Mdetrend, nrow = 12))
+seasonalM = colMeans(avgM, na.rm = T)
+plot(as.ts(rep(seasonalM,12)))
 
 
 
+#1 line function
+
+tsrs = ts(hoolie$Demand, frequency = 12)
+decomp = decompose(tsrs, "multiplicative")
+
+plot(as.ts(decomp$seasonal))
+plot(as.ts(decomp$trend))
+plot(as.ts(decomp$random))
+plot(decomp)
 
 
 
+# Similar analysis for PRICE
+
+Ptrend = ma(hoolie$Price, order = 12, centre = T)
+plot(as.ts(hoolie$Price))
+lines(Ptrend)
+plot(as.ts(Ptrend))
+#additive detrend
+Pdetrend= hoolie$Price - Ptrend
+plot(as.ts(Pdetrend))
+#multiplicative detrend
+MPdetrend= hoolie$Price/Ptrend
+plot(as.ts(MPdetrend))
+
+#Average seasonality
+Pavg = t(matrix(data = Pdetrend, nrow = 12))
+seasonalP = colMeans(Pavg, na.rm = T)
+plot(as.ts(rep(seasonalP,12)))
+#Average seasonality multiplicative
+PavgM = t(matrix(data = MPdetrend, nrow = 12))
+PseasonalM = colMeans(PavgM, na.rm = T)
+plot(as.ts(rep(PseasonalM,12)))
 
 
-library("tm")
-library("SnowballC")
-library("wordcloud")
-library("RColorBrewer")
-VOC_RecordsDB_hoolie_2017 <- read.csv("C:/Users/User/Desktop/promoter.csv")
-hoolie<-VOC_RecordsDB_hoolie_2017
-mydata<-Corpus(VectorSource(hoolie$Comments))
+write.csv(MPdetrend,file = "price.csv",row.names = FALSE,na="")
+write.csv(Mdetrend,file = "DEMAND.csv",row.names = FALSE,na="")
 
-mydata<-Corpus(VectorSource(hoolie$Comments))
-mydata <- tm_map(mydata, PlainTextDocument)
-mydata <- tm_map(mydata, content_transformer(tolower))
-mydata <- tm_map(mydata, removePunctuation)
-mydata <- tm_map(mydata, removeNumbers)
-mydata <- tm_map(mydata, removeWords,stopwords('english'))
-mydata <- tm_map(mydata, removeWords, c('make','grade','can','just','son','daughter','kid','also','hour','person'))
-mydata <- tm_map(mydata, removeWords, c('much','this','The','that','and','with','get','will','see'))
-mydata <- tm_map(mydata, stemDocument)
-mydata <- tm_map(mydata, stripWhitespace)
-matriz_terms <- DocumentTermMatrix(mydata)
 
-set.seed(1234)
-wordcloud(mydata,min.freq = 1,max.words=50, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
