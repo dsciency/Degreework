@@ -1,0 +1,92 @@
+require("foreign")
+require("MASS")
+require("dplyr")
+
+#running ols, and analysis regression plots
+summary(ols<-lm(INC2~race+educ+jobexp,data=hwdata))
+
+opar<-par(mfrow=c(2,2),oma=c(0,0,1.1,0))
+plot(ols,las=1)
+
+#getting cook's D and obtaining outliers
+PP<-d1<-cooks.distance(ols)
+r<-stdres(ols)
+a<-cbind(hwdata,d1,r)
+hoolie<-a[d1>4/500,]
+
+#creating new dataset without outliers just for alt analysis
+hwdata2<-hwdata
+hwdata2<-hwdata[-c(403,429:437),]
+
+#looking at highest residuals
+rabs <- abs(r)
+a <- cbind(hwdata, d1, r, rabs)
+asorted <- a[order(-rabs), ]
+highestRESD<-asorted[1:10, ]
+
+#running robust models with different weighing methods and predictors on orignial data
+summary(rr.huber<-rlm(INC2~race,data=hwdata,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ,data=hwdata,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=hwdata,maxit=45))
+summary(rr.bisquare<-rlm(INC2~race,data=hwdata,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~race+educ,data=hwdata,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~race+educ+jobexp,data=hwdata,psi=psi.bisquare))
+
+#Comparing lowest weight observations b/w different methods
+hweights <- data.frame(hwdata, resid = rr.huber$resid, weight = rr.huber$w)
+hweights2 <- hweights[order(rr.huber$w), ]
+hweights2[1:150, ]
+biweights <- data.frame(hwdata, resid = rr.bisquare$resid, weight = rr.bisquare$w)
+biweights2 <- biweights[order(rr.bisquare$w), ]
+biweights2[1:150, ]
+
+#Random Samples to check robustness
+S1<-sample_n(hwdata,300)
+S2<-sample_n(hwdata,300)
+S3<-sample_n(hwdata,300)
+S4<-sample_n(hwdata,300)
+S5<-sample_n(hwdata,300)
+S6<-sample_n(hwdata,300)
+
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S1,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S2,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S3,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S4,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S5,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S6,maxit=45))
+
+#Removing duplicate rows for new attempt at analysis
+newdf <- unique( hwdata[ , 1:4 ] )
+
+#Running rr on new data frame with 20 observations
+summary(rr.huber<-rlm(INC2~race,data=newdf,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ,data=newdf,maxit=45))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=newdf,maxit=45))
+summary(rr.bisquare<-rlm(INC2~race,data=newdf,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~race+educ,data=newdf,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~race+educ+jobexp,data=newdf,psi=psi.bisquare))
+
+#Splitting data into black and white to attempt new analysis
+
+summary(ols<-lm(INC2~educ+jobexp,data=white))
+summary(rr.huber<-rlm(INC2~educ,data=white,maxit=45))
+summary(rr.huber<-rlm(INC2~educ+jobexp,data=white,maxit=45))
+summary(rr.bisquare<-rlm(INC2~educ,data=white,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~educ+jobexp,data=white,psi=psi.bisquare))
+summary(ols<-lm(INC2~educ+jobexp,data=Black))
+summary(rr.huber<-rlm(INC2~educ,data=Black,maxit=45))
+summary(rr.huber<-rlm(INC2~educ+jobexp,data=Black,maxit=45))
+summary(rr.bisquare<-rlm(INC2~educ,data=Black,psi=psi.bisquare))
+summary(rr.bisquare<-rlm(INC2~educ+jobexp,data=Black,psi=psi.bisquare))
+
+
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S1,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S2,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S3,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S4,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S5,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=S6,method="MM",maxit=45,psi=psi.bisquare))
+
+###FINAL REGRESSION WITH MM ESTIMATION.
+summary(rr.bisaquareMM<-rlm(INC2~race+educ+jobexp,data=hwdata,method="MM",maxit=45,psi=psi.bisquare))
+summary(rr.huber<-rlm(INC2~race+educ+jobexp,data=hwdata,method="MM",maxit=45))
