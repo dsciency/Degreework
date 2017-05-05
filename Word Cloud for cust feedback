@@ -1,0 +1,25 @@
+
+#word cloud built to find key words in customer feedabk
+
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+VOC_RecordsDB_hoolie_2017 <- read.csv("C:/Users/User/Desktop/promoter.csv")
+hoolie<-VOC_RecordsDB_hoolie_2017
+mydata<-Corpus(VectorSource(hoolie$Comments))
+
+mydata<-Corpus(VectorSource(hoolie$Comments))
+mydata <- tm_map(mydata, PlainTextDocument)
+mydata <- tm_map(mydata, content_transformer(tolower))
+mydata <- tm_map(mydata, removePunctuation)
+mydata <- tm_map(mydata, removeNumbers)
+mydata <- tm_map(mydata, removeWords,stopwords('english'))
+mydata <- tm_map(mydata, removeWords, c('make','grade','can','just','son','daughter','kid','also','hour','person'))
+mydata <- tm_map(mydata, removeWords, c('much','this','The','that','and','with','get','will','see'))
+mydata <- tm_map(mydata, stemDocument)
+mydata <- tm_map(mydata, stripWhitespace)
+matriz_terms <- DocumentTermMatrix(mydata)
+
+set.seed(1234)
+wordcloud(mydata,min.freq = 1,max.words=50, random.order=FALSE, rot.per=0.35,colors=brewer.pal(8, "Dark2"))
