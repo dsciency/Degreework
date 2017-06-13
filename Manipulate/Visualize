@@ -1,4 +1,5 @@
 
+#Attached PPT "Customer Valuation"
 #there are two datasets, one has subscription information, one has device used by the subscriber. 
 #purpose is to merge these datasets and then again split by various variables to analyse again
 #Each subscription ID has several subblock ID, based on how many times same customer renewed a subscription
