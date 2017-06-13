@@ -1,0 +1,253 @@
+
+#there are two datasets, one has subscription information, one has device used by the subscriber. 
+#purpose is to merge these datasets and then again split by various variables to analyse again
+#Each subscription ID has several subblock ID, based on how many times same customer renewed a subscription
+#start date end date and first send date, tell story of subscription length 
+#time put in, learning and building this code: 4-6hrs 
+
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(xlsx)
+
+first_send = read.csv('first_send.csv', stringsAsFactors = FALSE)
+subs = read.csv('subscriptions.csv', stringsAsFactors = FALSE)
+
+subs1 = subs %>%
+  select(id = SUBBLOCK_ID, 
+         start_ym = SUBBLOCK_START_YRMON, 
+         sub_id = SUBSCRIPTION_ID, 
+         start_date = START_DATE, 
+         end_date = END_DATE, 
+         trial = TRIAL_RETEN_SUCCESS_STAT) %>%
+  mutate(start_date = as.Date(substr(start_date, 1, 9), "%d%b%Y"),
+         end_date = as.Date(substr(end_date, 1, 9), "%d%b%Y")) %>%
+  group_by(id) %>%
+  summarize(start_date = min(start_date), sub_id =  end_date = max(end_date), trial = max(trial))
+
+subs2 = subs1 %>%
+  mutate(sub_len = ifelse(round((end_date - start_date)/365, 0) > 100, NA, round((end_date - start_date)/365, 0)),
+         sub_days = ifelse((end_date - start_date) > 2000, NA, (end_date - start_date)))
+         
+
+subs3 = subs %>%
+  select(id = SUBBLOCK_ID, 
+         start_ym = SUBBLOCK_START_YRMON, 
+         sub_id = SUBSCRIPTION_ID, 
+         start_date = START_DATE, 
+         end_date = END_DATE, 
+         trial = TRIAL_RETEN_SUCCESS_STAT) %>%
+  mutate(start_date = as.Date(substr(start_date, 1, 9), "%d%b%Y"),
+         end_date = as.Date(substr(end_date, 1, 9), "%d%b%Y")) %>%
+  group_by(id) %>%
+  filter(row_number()==1) %>%
+  select(id, sub_id)
+
+working_sub = subs2 %>%
+  left_join(subs3, by = 'id')
+
+first_send1 = first_send %>%
+  select(sub_id = SUBSCRIPTION_ID, use_date = USAGE_DATE, device) %>%
+  mutate(use_date = as.Date(substr(use_date, 1, 9), "%d%b%Y"))
+
+working = working_sub %>%
+  left_join(first_send1, by = 'sub_id') %>%
+  mutate(start_year = format(start_date, "%Y"), start_month = format(start_date, "%m"), end_year = ifelse(format(end_date, "%Y") > 2020, NA, format(end_date, "%Y"))) %>%
+  mutate(start_quarter = floor((as.double(start_month)-1)/3)+1) %>%
+  mutate(delay = use_date - start_date)
+
+
+year_sum = working %>%
+  group_by(start_year, device) %>%
+  summarise(id = length(id))
+
+trial_sum = working %>%
+  group_by(trial, device) %>%
+  summarise(id = length(id))
+
+use_sum = working %>%
+  group_by(start_year, device) %>%
+  summarise(delay = mean(delay))
+
+
+group_1 = working %>%
+  filter(start_year == 2013, start_quarter == 1)
+group_2 = working %>%
+  filter(start_year == 2013, start_quarter == 2)
+group_3 = working %>%
+  filter(start_year == 2013, start_quarter == 3)
+group_4 = working %>%
+  filter(start_year == 2013, start_quarter == 4)
+group_5 = working %>%
+  filter(start_year == 2014, start_quarter == 1)
+group_6 = working %>%
+  filter(start_year == 2014, start_quarter == 2)
+group_7 = working %>%
+  filter(start_year == 2014, start_quarter == 3)
+group_8 = working %>%
+  filter(start_year == 2014, start_quarter == 4)
+group_9 = working %>%
+  filter(start_year == 2015, start_quarter == 1)
+group_10 = working %>%
+  filter(start_year == 2015, start_quarter == 2)
+group_11 = working %>%
+  filter(start_year == 2015, start_quarter == 3)
+group_12 = working %>%
+  filter(start_year == 2015, start_quarter == 4)
+group_13 = working %>%
+  filter(start_year == 2016, start_quarter == 1)
+group_14 = working %>%
+  filter(start_year == 2016, start_quarter == 2)
+group_15 = working %>%
+  filter(start_year == 2016, start_quarter == 3)
+group_16 = working %>%
+  filter(start_year == 2016, start_quarter == 4)
+
+write.csv(group_1, 'group_1')
+write.csv(group_2, 'group_2')
+write.csv(group_3, 'group_3')
+write.csv(group_4, 'group_4')
+write.csv(group_5, 'group_5')
+write.csv(group_6, 'group_6')
+write.csv(group_7, 'group_7')
+write.csv(group_8, 'group_8')
+write.csv(group_9, 'group_9')
+write.csv(group_10, 'group_10')
+write.csv(group_11, 'group_11')
+write.csv(group_12, 'group_12')
+write.csv(group_13, 'group_13')
+write.csv(group_14, 'group_14')
+write.csv(group_15, 'group_15')
+write.csv(group_16, 'group_16')
+
+
+write.csv(year_sum, 'year_sum')
+
+
+ggplot(year_sum) +
+  geom_line(aes(x = start_year, y = id, group = device, colour = device), size = 1 ) +
+  labs(x = 'Year', y = 'Customer Count', title = 'Customer Segments Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+ggplot(year_sum) +
+  geom_line(aes(x = start_year, y = sub_len, group = device, colour = device), size = 1 ) +
+  labs(x = 'Year', y = 'Average Subscription Length', title = 'Customer Segments\' Subscription Lengths Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+ggplot(year_sum) +
+  geom_line(aes(x = start_year, y = sub_days, group = device, colour = device), size = 1 ) +
+  labs(x = 'Year', y = 'Average Subscription Length', title = 'Customer Segments\' Subscription Lengths Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+ggplot(working) +
+  geom_point(aes(x = start_date, y = delay, group = device, colour = device), size = .5 ) +
+  labs(x = 'Start Date', y = 'Delay', title = 'Customer Segments\' Use Delay Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+ggplot(working) +
+  geom_point(aes(x = start_date, y = sub_days, group = device, colour = device), size = .5 ) +
+  labs(x = 'Start Date', y = 'Sub Length - Days', title = 'Customer Segments\' Subscription Length Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+ggplot(working) +
+  geom_point(aes(x = start_date, y = sub_days, group = device, colour = device), size = .5 ) +
+  labs(x = 'Start Date', y = 'Sub Length - Days', title = 'Customer Segments\' Subscription Length Over Time') +
+  scale_y_continuous(labels = comma) +
+  scale_color_discrete('Device') +
+  theme_minimal()
+
+
+library(lubridate)
+library(data.table)
+library(zoo)
+
+Wdata<-subscriptions
+
+Wdata$NumSD<-dmy_hms(Wdata$START_DATE,tz = "US/Eastern")
+Wdata$NumED<-dmy_hms(Wdata$END_DATE,tz = "US/Eastern")
+Copy<-Wdata
+
+#character recorded as numeric, convert back to charcter
+Wdata$TRIAL_RETEN_SUCCESS_STAT<-as.character(Wdata$TRIAL_RETEN_SUCCESS_STAT)
+
+#join two data sets by subblock ID, with min start date, and max end date
+
+TWdata<-setcolorder(setDT(Wdata)[, c(NumED = max(NumED), lapply(.SD, min)), 
+                                .SDcols = setdiff(names(Wdata), c("NumED", "SUBBLOCK_ID")),
+                                by = SUBBLOCK_ID], names(Wdata))[]
+
+#calculate duration of subscription, classify active subscriptions
+TWdata$BRAND<-"AG"
+TWdata$SUB_TERM<-"ANNUAL"
+Mdata <- merge(TWdata,first_send,by="SUBSCRIPTION_ID")
+Mdata$Active<-ifelse (Mdata$NumED>Sys.time(),1,0)
+Mdata$Sub_Dur<-(Mdata$NumED-Mdata$NumSD)/86400
+write.csv(Mdata,file = "Appended1.csv")
+
+# split into years month quarters to analyse data by quarter across years, to find seasonality.
+Mdata$quarters <- as.yearqtr(Mdata$NumSD, format = "%Y-%m-%d")
+Trial<-Mdata
+Trial<-separate(Trial, NumSD, into = c("year", "month","date")) 
+Trial$date<-NULL
+Trial$NumSD<-Mdata$NumSD
+Mdata<-Trial
+
+# split by device - mobile or desktop
+device<-split(Mdata,Mdata$device)
+mobiledata.df<-device[2]
+dekstopdata<-device[1]
+
+splityear2<-split(Mdata,list(Mdata$device,Mdata$year,Mdata$quarter))
+
+# split by quarters across years - mobile or desktop
+Desktop2013 <- splityear2[seq(1, length(splityear2), 8)]
+Desktop2014 <- splityear2[seq(3, length(splityear2), 8)]
+Desktop2015 <- splityear2[seq(5, length(splityear2), 8)]
+Desktop2016 <- splityear2[seq(7, length(splityear2), 8)]
+
+Mobile2013 <- splityear2[seq(2, length(splityear2), 8)]
+Mobile2014 <- splityear2[seq(4, length(splityear2), 8)]
+Mobile2015 <- splityear2[seq(6, length(splityear2), 8)]
+Mobile2016 <- splityear2[seq(8, length(splityear2), 8)]
+
+m<-as.data.frame(Mobile2013)
+
+list2013<-splityear1[c(1,5,9,13)]
+list2014<-splityear1[c(2,6,10,14)]
+list2015<-splityear1[c(3,7,11,15)]
+list2016<-splityear1[c(4,8,12,16)]
+
+
+#Unused syntax
+#for (i in seq_along(Mobile2013)) {
+#  filename = paste(names(Mobile2013)[i], ".csv")
+  #write.csv(data[[i]], filename)}
+#qwe.df<-splityear[[1]]
+#splityearQ <- lapply(splityear, split(splityear,Mdata$quarter))
+#splityear<-split(Mdata,Mdata$year)
+#splitquarter<-split(Mdata,Mdata$quarter)
+#splitdevice<-split(Mdata,Mdata$device)
+#for (i in seq_along(splityear)) {
+#  yearsplit = paste(i, ".csv")
+ # write.csv(data[[i]], yearsplit)
+#}
+#GWdata <-ddply(Wdata, ~ SUBBLOCK_ID, summarize, StartD = min(NumSD),EndD=max(NumED),
+               #firstID=min(SUBSCRIPTION_ID))
+#TWdata <-ddply(Wdata, ~ SUBBLOCK_ID,summarize, StartD = min(NumSD),EndD=max(NumED),
+               #SUBSCRIPTION_ID=min(SUBSCRIPTION_ID),
+               #SUBBLOCK_START_YRMON=min(SUBBLOCK_START_YRMON))
+#hool <-ddply(Wdata,~ SUBBLOCK_ID,"",summarize, StartD = min(NumSD),EndD=max(NumED),
+#            while (NumSD == min(NumSD)){SUBSCRIPTION_ID=SUBSCRIPTION_ID
+#  TRIAL_RETEN_SUCCESS_STAT=TRIAL_RETEN_SUCCESS_STAT
+# SUBBLOCK_START_YRMON=SUBBLOCK_START_YRMON})#
+
